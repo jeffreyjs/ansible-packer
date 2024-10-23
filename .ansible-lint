@@ -1,0 +1,7 @@
+skip_list:
+  - role-name
+  - command-instead-of-shell
+  - no-changed-when
+  - no-handler
+warn_list:
+  - yaml

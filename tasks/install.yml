@@ -1,0 +1,76 @@
+---
+- name: Install unzip.
+  ansible.builtin.package:
+    name: unzip
+    state: present
+
+- name: Set latest version.
+  when:
+    - installed_result.rc != 0
+  tags: ["packages", "packer"]
+  block:
+    - name: Get latest release.
+      ansible.builtin.uri:
+        url: https://api.github.com/repos/{{ packer_repo }}/releases/latest
+        return_content: true
+      register: packer_release
+
+    - name: Set version if not defined.
+      ansible.builtin.set_fact:
+        packer_version: "{{ packer_release.json.tag_name | regex_search('[0-9].*') }}"
+
+    - name: Check installed version.
+      ansible.builtin.shell:
+        cmd: |
+          set -o pipefail
+          packer version 2>&1 | grep -q {{ packer_version }}
+        executable: /bin/bash
+      failed_when: false
+      changed_when: false
+      register: packer_version_match
+
+    - name: Get checksums.
+      when: packer_version_match.rc != 0 or installed_result.rc == 0
+      block:
+        - name: Set packer_system fact.
+          ansible.builtin.set_fact:
+            packer_system: "{{ ansible_system | lower }}"
+          run_once: true
+        - name: Get checksum list from github.
+          ansible.builtin.set_fact:
+            packer_checksums: "{{ lookup('url', 'https://releases.hashicorp.com/packer/' + packer_version + '/packer_' + packer_version + '_SHA256SUMS', wantlist=True) | list }}"
+          run_once: true
+        - name: Get checksum for {{ packer_arch }}.
+          ansible.builtin.set_fact:
+            packer_checksum: "sha256:{{ item.split(' ')[0] }}"
+          with_items: "{{ packer_checksums }}"
+          when:
+            - "('packer_' + packer_version + '_' + ansible_system | lower + '_' + packer_arch) in item"
+
+    - name: Set fact for temporary download path.
+      ansible.builtin.set_fact:
+        packer_archive_path: "/tmp/packer_{{ packer_version }}_linux_{{ packer_arch }}.zip"
+  
+    - name: Download Packer.
+      ansible.builtin.get_url:
+        url: https://releases.hashicorp.com/packer/{{ packer_version }}/packer_{{ packer_version }}_linux_{{ packer_arch }}.zip
+        dest: "{{ packer_archive_path }}"
+        mode: "0644"
+        checksum: "{{ packer_checksum }}"
+      register: packer_download
+      when: packer_version_match.rc != 0 or installed_result.rc == 0
+
+    - name: Unarchive Packer.
+      ansible.builtin.unarchive:
+        src: "{{ packer_archive_path }}"
+        dest: "{{ packer_bin_path }}"
+        remote_src: true
+        creates: "{{ packer_bin_path }}/packer"
+        mode: "0755"
+      register: packer_unarchive
+      when: packer_download.changed
+
+    - name: Remove downloaded zip archive.
+      ansible.builtin.file:
+        path: "{{ packer_archive_path }}"
+        state: absent

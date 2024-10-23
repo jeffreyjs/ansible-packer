@@ -1,0 +1,7 @@
+---
+- name: Remove Packer.
+  ansible.builtin.file:
+    dest: "{{ packer_bin_path }}/packer"
+    state: absent
+  tags: ["packages", "packer"]
+  when: installed_result.rc == 0

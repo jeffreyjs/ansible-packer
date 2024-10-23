@@ -1,0 +1,20 @@
+---
+- name: Check if packer is installed.
+  ansible.builtin.command:
+    argv:
+      - packer
+      - version
+  register: installed_result
+  ignore_errors: true
+  changed_when: false
+  tags: ["packages", "packer"]
+
+- name: Install packer.
+  ansible.builtin.include_tasks: install.yml
+  when: packer_state == "install"
+  tags: ["install", "packer"]
+
+- name: Remove packer.
+  ansible.builtin.include_tasks: uninstall.yml
+  when: packer_state == "remove" and installed_result.rc == 0
+  tags: ["remove", "packer"]
