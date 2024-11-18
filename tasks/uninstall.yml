@@ -1,5 +1,7 @@
 ---
 - name: Remove Packer.
+  become: true
+  become_method: ansible.builtin.sudo
   ansible.builtin.file:
     dest: "{{ packer_bin_path }}/packer"
     state: absent

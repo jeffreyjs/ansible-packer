@@ -1,5 +1,7 @@
 ---
 - name: Install unzip.
+  become: true
+  become_method: ansible.builtin.sudo
   ansible.builtin.package:
     name: unzip
     state: present
@@ -61,6 +63,8 @@
       when: packer_version_match.rc != 0 or installed_result.rc == 0
 
     - name: Unarchive Packer.
+      become: true
+      become_method: ansible.builtin.sudo
       ansible.builtin.unarchive:
         src: "{{ packer_archive_path }}"
         dest: "{{ packer_bin_path }}"

@@ -1,0 +1,8 @@
+---
+- name: Verify
+  hosts: all
+  tasks:
+    - name: Check that packer is installed
+      ansible.builtin.stat:
+        path: "{{ packer_bin_path }}/packer"
+      register: packer_installed_result
