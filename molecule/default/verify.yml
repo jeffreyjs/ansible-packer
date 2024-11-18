@@ -6,3 +6,5 @@
       ansible.builtin.stat:
         path: "{{ packer_bin_path }}/packer"
       register: packer_installed_result
+  vars:
+    packer_bin_path: /usr/local/bin
